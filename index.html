@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Température ESP32</title>
+</head>
+<body>
+  <h1>Température ESP32</h1>
+  <h2 id="temp">-- °C</h2>
+
+  <!-- Firebase App (always required) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <script>
+    // ⚡ Mets ici tes infos Firebase
+    const firebaseConfig = {
+      databaseURL: "https://home-temp-10008-default-rtdb.europe-west1.firebasedatabase.app"
+    };
+
+    // Initialise Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Référence à la température
+    const tempRef = db.ref('temperature/value');
+
+    // Mise à jour en temps réel
+    tempRef.on('value', (snapshot) => {
+      const temp = snapshot.val();
+      document.getElementById('temp').textContent = temp + " °C";
+    });
+  </script>
+</body>
+</html>
