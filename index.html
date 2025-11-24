@@ -1,35 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <title>Température ESP32</title>
+<meta charset="UTF-8">
+<title>ESP32 Dashboard</title>
+<style>
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: 'Orbitron', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #001f3f;
+    transition: background-color 1s ease;
+  }
+
+  h1 {
+    font-size: 10vw;
+    color: #fff;
+    text-align: center;
+    margin: 0;
+    text-shadow: 0 0 20px #000, 0 0 40px #000;
+  }
+</style>
+<!-- Police futuriste Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h1>Température ESP32</h1>
-  <h2 id="temp">-- °C</h2>
+<h1 id="temp">--°C</h1>
 
-  <!-- Firebase App (always required) -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
-  <script>
-    // ⚡ Mets ici tes infos Firebase
-    const firebaseConfig = {
-      databaseURL: "https://home-temp-10008-default-rtdb.europe-west1.firebasedatabase.app"
-    };
+<script>
+  // ⚡ Mets ici l'URL de ta base Firebase
+  const firebaseConfig = {
+    databaseURL: "https://TON_PROJET.firebaseio.com/"
+  };
 
-    // Initialise Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const tempRef = db.ref('temperature/value');
 
-    // Référence à la température
-    const tempRef = db.ref('temperature/value');
+  function getColor(temp){
+    // Palette : Bleu (0°C) -> Vert (20°C) -> Jaune (30°C) -> Orange (35°C) -> Rouge (40°C)
+    if(temp <= 0) return "#0000ff";
+    if(temp <= 20) return `rgb(0,${Math.floor(temp*255/20)},255)`;
+    if(temp <= 30) return `rgb(${Math.floor((temp-20)*255/10)},255,0)`;
+    if(temp <= 35) return `rgb(255, ${Math.floor((35-temp)*128/5)}, 0)`;
+    return "#ff0000";
+  }
 
-    // Mise à jour en temps réel
-    tempRef.on('value', (snapshot) => {
-      const temp = snapshot.val();
-      document.getElementById('temp').textContent = temp + " °C";
-    });
-  </script>
+  tempRef.on('value', (snapshot) => {
+    const temp = snapshot.val();
+    document.getElementById('temp').textContent = temp.toFixed(1) + "°C";
+    document.body.style.backgroundColor = getColor(temp);
+  });
+</script>
 </body>
 </html>
