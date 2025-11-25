@@ -2,60 +2,116 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>ESP32 Dashboard</title>
+<title>ESP32 HUD Temp</title>
 <style>
   html, body {
     height: 100%;
     margin: 0;
+    overflow: hidden;
     font-family: 'Orbitron', sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #001f3f;
-    transition: background-color 1s ease;
+    background: linear-gradient(to bottom, #000015, #000000); /* bleu nuit vers noir */
   }
 
-  h1 {
-    font-size: 10vw;
-    color: #fff;
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  #tempDisplay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #ffffff;
+    font-size: 8vw;
     text-align: center;
-    margin: 0;
-    text-shadow: 0 0 20px #000, 0 0 40px #000;
+    text-shadow: 0 0 10px #fff, 0 0 20px #fff;
+    z-index: 10; /* au-dessus des cercles */
   }
 </style>
-<!-- Police futuriste Google Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
-<h1 id="temp">--°C</h1>
+<div id="tempDisplay">--°C</div>
+<canvas id="hudCanvas"></canvas>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
 <script>
-  // ⚡ Mets ici l'URL de ta base Firebase
   const firebaseConfig = {
     databaseURL: "https://home-temp-10008-default-rtdb.europe-west1.firebasedatabase.app/"
   };
-
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
   const tempRef = db.ref('temperature/value');
 
-  function getColor(temp){
-    // Palette : Bleu (0°C) -> Vert (20°C) -> Jaune (30°C) -> Orange (35°C) -> Rouge (40°C)
-    if(temp <= 0) return "#0000ff";
-    if(temp <= 20) return `rgb(0,${Math.floor(temp*255/20)},255)`;
-    if(temp <= 30) return `rgb(${Math.floor((temp-20)*255/10)},255,0)`;
-    if(temp <= 35) return `rgb(255, ${Math.floor((35-temp)*128/5)}, 0)`;
-    return "#ff0000";
-  }
+  const tempDisplay = document.getElementById('tempDisplay');
+  let temperature = 0;
 
   tempRef.on('value', (snapshot) => {
-    const temp = snapshot.val();
-    document.getElementById('temp').textContent = temp.toFixed(1) + "°C";
-    document.body.style.backgroundColor = getColor(temp);
+    temperature = snapshot.val();
+    tempDisplay.textContent = temperature.toFixed(1) + "°C";
+  });
+
+  const canvas = document.getElementById('hudCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  // Fonction pour interpoler les couleurs RGB entre deux couleurs
+  function interpolateColor(color1, color2, factor) {
+    const c1 = color1.match(/\w\w/g).map(c => parseInt(c,16));
+    const c2 = color2.match(/\w\w/g).map(c => parseInt(c,16));
+    const result = c1.map((c,i) => Math.round(c + factor*(c2[i]-c)));
+    return `rgb(${result[0]},${result[1]},${result[2]})`;
+  }
+
+  // Retourne une couleur continue selon la température (0-40°C)
+  function getCircleColor(temp){
+    const minTemp = 0;
+    const maxTemp = 40;
+    const factor = Math.min(Math.max((temp - minTemp)/(maxTemp - minTemp), 0), 1);
+    return interpolateColor("2e5a99", "c05040", factor);
+  }
+
+  function drawHUD() {
+    const w = canvas.width;
+    const h = canvas.height;
+    const cx = w/2;
+    const cy = h/2;
+    const radius = Math.min(w,h)/6;
+
+    ctx.clearRect(0, 0, w, h);
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    const time = Date.now() / 1000;
+
+    // Cercles concentriques animés derrière la température
+    for(let i=0; i<5; i++){
+      ctx.beginPath();
+      ctx.strokeStyle = getCircleColor(temperature);
+      ctx.globalAlpha = 0.2 + 0.15*i;
+      ctx.lineWidth = 2;
+      ctx.arc(0, 0, radius + i*30 + Math.sin(time+i)*10, 0, 2*Math.PI);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1; // reset alpha
+
+    
+
+    ctx.restore();
+    requestAnimationFrame(drawHUD);
+  }
+
+  drawHUD();
+
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
   });
 </script>
 </body>
